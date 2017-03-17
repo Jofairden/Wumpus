@@ -5,16 +5,31 @@ using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
 using System.Diagnostics;
+using Discord.WebSocket;
+using Wumpus.Common;
 
 namespace Wumpus.Modules
 {
 	public class DefaultModule : ModuleBase<SocketCommandContext>
 	{
 		private readonly CommandService _service;
+		private readonly IDependencyMap _map;
 
-		public DefaultModule(CommandService service) 
+		public DefaultModule(CommandService service, IDependencyMap map) 
 		{
 			_service = service;
+			_map = map;
+		}
+
+		[Command("leaveall")]
+		[RequireContext(ContextType.DM)]
+		[RequireOwner]
+		public async Task Leaveall()
+		{
+			foreach (var guild in Context.Client.Guilds)
+			{
+				await guild.LeaveAsync();
+			};
 		}
 
 		[Command("ping"), Alias("status")]
@@ -107,6 +122,57 @@ namespace Wumpus.Modules
 			}
 
 			await ReplyAsync("", false, builder.Build());
+		}
+
+		[Group("wumpi"), Name("wumpi")]
+		public class Wumpi : ModuleBase<SocketCommandContext>
+		{
+			private readonly CommandService _service;
+			private readonly IDependencyMap _map;
+
+			public Wumpi(CommandService service, IDependencyMap map)
+			{
+				_service = service;
+				_map = map;
+			}
+
+			[Command("gift")]
+			[RequireUserPermission(GuildPermission.Administrator)]
+			public async Task Gift(int points)
+			{
+				var guild = Context.Guild;
+
+				await guild.DownloadUsersAsync();
+				foreach (var user in guild.Users.Where(x => !x.IsBot))
+				{
+					var config = await new UserConfig(user.Id).Maintain<UserConfig>();
+					config.GivePoints(user.Guild.Id, points);
+				}
+
+				await ReplyAsync($"Gifted {points} wumpoints to {guild.Users.Count} users.");
+			}
+
+			[Command("gift")]
+			[RequireUserPermission(GuildPermission.Administrator)]
+			public async Task Gift(IGuildUser user, int points)
+			{
+				var config = await new UserConfig(user.Id).Maintain<UserConfig>();
+				config.GivePoints(user.Guild.Id, points);
+				await ReplyAsync($"Gifted {points} wumpoints to {user.Username}");
+			}
+
+			[Command("wealth")]
+			public async Task Wealth()
+			{
+				var configs =
+					UserConfig.GetAll()
+						.Where(x => x.Wumpoints.ContainsKey(Context.Guild.Id))
+						.OrderByDescending(x => x.Wumpoints[Context.Guild.Id])
+						.Take(11);
+
+				await ReplyAsync($"Showing top 10 wealthiest people\n\n" +
+								string.Join("\n", configs.Select(x => $"{x.UID}: {x.Wumpoints[Context.Guild.Id]}")));
+			}
 		}
 	}
 }

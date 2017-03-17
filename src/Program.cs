@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Discord;
+using Discord.Commands;
 using Discord.WebSocket;
 using Wumpus.Common;
 
@@ -22,6 +23,7 @@ namespace Wumpus
 		private const string oath2Url = "https://discordapp.com/api/oauth2/authorize";
 
 		// Api
+		private BotConfig _config;
 		private DiscordSocketClient _client;
 		private CommandHandler _commandHandler;
 
@@ -30,7 +32,8 @@ namespace Wumpus
 			// Start bot
 			Console.Title = $"Wumpus Bot for Discord by Jofairden";
 
-			await BotConfig.Maintain();
+			_config = new BotConfig(Token.BotToken, Token.TestToken);
+			await _config.Maintain<BotConfig>();
 
 			await Console.Out.WriteLineAsync($"Start date: {DateTime.UtcNow}");
 			await Console.Out.WriteLineAsync($"{oath2Url}?client_id={clientid}&scope=bot");
@@ -48,16 +51,29 @@ namespace Wumpus
 			_client.JoinedGuild += Client_JoinedGuild;
 			_client.Ready += Client_Ready;
 			_client.LatencyUpdated += Client_LatencyUpdated;
+			_client.UserJoined += _client_UserJoined;
+			_client.MessageReceived += _client_MessageReceived;
 
 			// Login and start
-			await _client.LoginAsync(TokenType.Bot, BotConfig.Load().BotToken);
+			await _client.LoginAsync(TokenType.Bot, _config.BotToken);
 			await _client.StartAsync();
 
+			var map = new DependencyMap();
 			_commandHandler = new CommandHandler();
-			await _commandHandler.Install(_client);
+			await _commandHandler.Install(_client, map);
 
 			// Never end app, let bot run.
 			await Task.Delay(-1);
+		}
+
+		private async Task _client_MessageReceived(SocketMessage user)
+		{
+			 await new UserConfig(user.Id).Maintain<UserConfig>();
+		}
+
+		private async Task _client_UserJoined(SocketGuildUser user)
+		{
+			await new UserConfig(user.Id).Maintain<UserConfig>();
 		}
 
 		private async Task Client_LatencyUpdated(int older, int newer)
@@ -77,6 +93,15 @@ namespace Wumpus
 		private async Task Client_Ready()
 		{
 			await Console.Out.WriteLineAsync($"Wumpus bot ready.");
+
+			foreach (var guild in _client.Guilds)
+			{
+				await guild.DownloadUsersAsync();
+				foreach (var user in guild.Users.Where(x => !x.IsBot && x.Status != UserStatus.Offline))
+				{
+					await new UserConfig(user.Id).Maintain<UserConfig>();
+				}
+			}
 		}
 
 		private async Task Client_JoinedGuild(SocketGuild guild)

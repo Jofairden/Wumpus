@@ -15,11 +15,13 @@ namespace Wumpus
 	{
 		private DiscordSocketClient _client;
 		private CommandService _service;
+		private IDependencyMap _map;
 
 		// Install
-		public async Task Install(DiscordSocketClient c)
+		public async Task Install(DiscordSocketClient client, IDependencyMap map)
 		{
-			_client = c;
+			_map = map;
+			_client = client;
 			_service = new CommandService();
 
 			await _service.AddModulesAsync(Assembly.GetEntryAssembly());
