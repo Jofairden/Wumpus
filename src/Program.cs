@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Discord;
 using Discord.WebSocket;
+using Wumpus.Common;
 
 namespace Wumpus
 {
@@ -28,6 +29,9 @@ namespace Wumpus
 		{
 			// Start bot
 			Console.Title = $"Wumpus Bot for Discord by Jofairden";
+
+			await BotConfig.Maintain();
+
 			await Console.Out.WriteLineAsync($"Start date: {DateTime.UtcNow}");
 			await Console.Out.WriteLineAsync($"{oath2Url}?client_id={clientid}&scope=bot");
 
@@ -46,7 +50,7 @@ namespace Wumpus
 			_client.LatencyUpdated += Client_LatencyUpdated;
 
 			// Login and start
-			await _client.LoginAsync(TokenType.Bot, Token.BotToken);
+			await _client.LoginAsync(TokenType.Bot, BotConfig.Load().BotToken);
 			await _client.StartAsync();
 
 			_commandHandler = new CommandHandler();
