@@ -1,4 +1,7 @@
 {
+  "title": "Wumpus Bot",
+  "copyright": "Daniël Zondervan",
+  "description": "Wumpus bot for Discord",
   "version": "1.0.0-*",
   "buildOptions": {
     "emitEntryPoint": true

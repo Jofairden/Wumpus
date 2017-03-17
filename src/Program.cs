@@ -11,7 +11,8 @@ namespace Wumpus
 {
 	public class Program
 	{
-		public static void Main(string[] args) => new Program().Start().GetAwaiter().GetResult();
+		public static void Main(string[] args) => 
+			new Program().Start().GetAwaiter().GetResult();
 
 		// Settings
 		public const string version = "r-1.0";
