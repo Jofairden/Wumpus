@@ -42,8 +42,7 @@ namespace Wumpus
 			_client = new DiscordSocketClient(new DiscordSocketConfig()
 			{
 				LogLevel = LogSeverity.Verbose,
-				AlwaysDownloadUsers = true,
-				MessageCacheSize = 1000, // per channel
+				MessageCacheSize = 25, // per channel
 			});
 
 			// Register events
@@ -66,14 +65,16 @@ namespace Wumpus
 			await Task.Delay(-1);
 		}
 
-		private async Task _client_MessageReceived(SocketMessage user)
+		private async Task _client_MessageReceived(SocketMessage message)
 		{
-			 await new UserConfig(user.Id).Maintain<UserConfig>();
+			if (!message.Author.IsBot && !message.IsWebhook)
+				await new UserConfig(message.Author.Id).Maintain<UserConfig>();
 		}
 
 		private async Task _client_UserJoined(SocketGuildUser user)
 		{
-			await new UserConfig(user.Id).Maintain<UserConfig>();
+			if (!user.IsBot)
+				await new UserConfig(user.Id).Maintain<UserConfig>();
 		}
 
 		private async Task Client_LatencyUpdated(int older, int newer)
@@ -97,7 +98,7 @@ namespace Wumpus
 			foreach (var guild in _client.Guilds)
 			{
 				await guild.DownloadUsersAsync();
-				foreach (var user in guild.Users.Where(x => !x.IsBot && x.Status != UserStatus.Offline))
+				foreach (var user in guild.Users.Where(x => !x.IsBot))
 				{
 					await new UserConfig(user.Id).Maintain<UserConfig>();
 				}

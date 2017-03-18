@@ -138,40 +138,46 @@ namespace Wumpus.Modules
 
 			[Command("gift")]
 			[RequireUserPermission(GuildPermission.Administrator)]
-			public async Task Gift(int points)
+			public async Task Gift(double points)
 			{
 				var guild = Context.Guild;
-
-				await guild.DownloadUsersAsync();
-				foreach (var user in guild.Users.Where(x => !x.IsBot))
+				var configs = await UserConfig.GetAll();
+				uint givePoints =
+					points > uint.MaxValue
+					? uint.MaxValue
+					: (uint)points;
+				foreach (var config in configs)
 				{
-					var config = await new UserConfig(user.Id).Maintain<UserConfig>();
-					config.GivePoints(user.Guild.Id, points);
+					config.GivePoints(Context.Guild.Id, givePoints);
 				}
 
-				await ReplyAsync($"Gifted {points} wumpoints to {guild.Users.Count} users.");
+				await ReplyAsync($"Gifted {points} wumpoints to {configs.Count} users.");
 			}
 
 			[Command("gift")]
 			[RequireUserPermission(GuildPermission.Administrator)]
-			public async Task Gift(IGuildUser user, int points)
+			public async Task Gift(IGuildUser user, double points)
 			{
 				var config = await new UserConfig(user.Id).Maintain<UserConfig>();
-				config.GivePoints(user.Guild.Id, points);
-				await ReplyAsync($"Gifted {points} wumpoints to {user.Username}");
+				uint givePoints = 
+					points > uint.MaxValue
+					? uint.MaxValue
+					: (uint)points;
+				config.GivePoints(user.Guild.Id, givePoints);
+				await ReplyAsync($"Gifted {givePoints} wumpoints to {user.Username}");
 			}
 
 			[Command("wealth")]
 			public async Task Wealth()
 			{
-				var configs =
-					UserConfig.GetAll()
-						.Where(x => x.Wumpoints.ContainsKey(Context.Guild.Id))
-						.OrderByDescending(x => x.Wumpoints[Context.Guild.Id])
-						.Take(11);
+				var configs = await UserConfig.GetAll();
+				var filtered = configs
+					.Where(x => x.Wumpoints.ContainsKey(Context.Guild.Id))
+					.OrderByDescending(x => x.Wumpoints[Context.Guild.Id])
+					.Take(11);
 
 				await ReplyAsync($"Showing top 10 wealthiest people\n\n" +
-								string.Join("\n", configs.Select(x => $"{x.UID}: {x.Wumpoints[Context.Guild.Id]}")));
+								string.Join("\n", filtered.Select(x => $"{Format.Bold(Context.Guild.GetUser(x.UID)?.Username ?? "Not found")} with `{x.Wumpoints[Context.Guild.Id]}` wumpoints")));
 			}
 		}
 	}
